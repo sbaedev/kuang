@@ -1,32 +1,96 @@
 <!DOCTYPE html>
-
 <html>
+
 <head>
-<title>Chat</title>
+  <title>Chat</title>
 </head>
+
 <body>
-<h1>WebSocket Chat</h1>
-<form action="" onsubmit="sendMessage(event)">
-<input type="text" id="messageText" autocomplete="off"/>
-<button>Send</button>
-</form>
-<ul id='messages'>
-</ul>
-<script>
-var ws = new WebSocket("ws://localhost:8000/ws");
-ws.onmessage = function(event) {
-var messages = document.getElementById('messages')
-var message = document.createElement('li')
-var content = document.createTextNode(event.data)
-message.appendChild(content)
-messages.appendChild(message)
-};
-function sendMessage(event) {
-var input = document.getElementById("messageText")
-ws.send(input.value)
-input.value = ''
-event.preventDefault()
-}
-</script>
+  <label for="roomName">Room Name:</label>
+  <input type="text" id="roomName" placeholder="Enter room name" autocomplete="off" />
+  <form action="" onsubmit="sendMessage(event)">
+    <input type="text" id="messageText" autocomplete="off" />
+    <button>Send</button>
+  </form>
+  <ul id="messages"></ul>
+  <button id="joinButton" onclick="joinRoom()">Join Room</button> <!-- 방 참여 버튼 추가 -->
+  <button id="leaveButton" onclick="leaveRoom()">Leave Room</button> <!-- 방 나가기 버튼 추가 -->
+
+  <script>
+    var ws;
+    var clientId = generateClientId(); // 고유한 client_id 생성
+
+    function generateClientId() {
+      // 간단한 client_id 생성 방법 (UUID 사용 가능)
+      return 'client-' + Math.random().toString(36).substr(2, 9);
+    }
+
+    function joinRoom() {
+      var roomName = document.getElementById("roomName").value;
+
+      // 이미 연결된 경우 경고
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        alert("You are already connected to a room.");
+        return;
+      }
+
+      // // 방 이름과 clientId를 localStorage에 저장
+      // localStorage.setItem('roomName', roomName);
+      // localStorage.setItem('clientId', clientId);
+
+      ws = new WebSocket(`ws://localhost:8000/ws/${roomName}?client_id=${clientId}`);
+
+      ws.onmessage = function (event) {
+        var messages = document.getElementById('messages');
+        var message = document.createElement('li');
+        var content = document.createTextNode(event.data);
+        message.appendChild(content);
+        messages.appendChild(message);
+      };
+
+      ws.onopen = function () {
+        console.log("Connected to the WebSocket server.");
+      };
+
+      ws.onclose = function () {
+        console.log("Disconnected from the WebSocket server.");
+        ws = null; // 연결이 끊기면 ws 객체를 null로 설정
+      };
+    }
+
+    function leaveRoom() {
+      if (ws) {
+        ws.close(); // WebSocket 연결 종료
+        console.log("Left the room.");
+        ws = null; // ws 객체 초기화
+        document.getElementById('messages').innerHTML = ''; // 메시지 리스트 초기화
+      } else {
+        alert("You are not in any room.");
+      }
+    }
+
+    function sendMessage(event) {
+      var input = document.getElementById("messageText");
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(input.value);
+        input.value = '';
+      } else {
+        alert("Please connect to a room first.");
+      }
+      event.preventDefault();
+    }
+
+    // // 페이지 로드 시 방과 clientId 복원
+    // window.onload = function() {
+    //     var savedRoom = localStorage.getItem('roomName');
+    //     var savedClientId = localStorage.getItem('clientId');
+    //     if (savedRoom && savedClientId) {
+    //         document.getElementById('roomName').value = savedRoom;
+    //         clientId = savedClientId;
+    //         joinRoom(); // 자동으로 방에 재접속
+    //     }
+    // };
+  </script>
 </body>
+
 </html>
