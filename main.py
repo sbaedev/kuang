@@ -23,39 +23,56 @@ def get_db():
     finally:
         db.close()
 
-# 사용자 생성 엔드포인트
+# 사용자 생성
 
 
-@app.post("/users/", response_model=schemas.UserResponse)
+@app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return crud.create_user(db=db, user=user)
 
-# 팀 생성 엔드포인트
+# 사용자 조회
 
 
-@app.post("/teams/", response_model=schemas.TeamResponse)
-def create_team(team: schemas.TeamCreate, db: Session = Depends(get_db)):
-    return crud.create_team(db=db, team=team)
-
-# 특정 사용자 조회 엔드포인트
-
-
-@app.get("/users/{user_id}", response_model=schemas.UserResponse)
-def read_user(user_id: int, db: Session = Depends(get_db)):
-    db_user = crud.get_user(db=db, user_id=user_id)
+@app.get("/users/{user_uuid}", response_model=schemas.User)
+def get_user(user_uuid: str, db: Session = Depends(get_db)):
+    db_user = crud.get_user(db=db, user_uuid=user_uuid)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
-# 특정 팀 조회 엔드포인트
+# 팀 생성
 
 
-@app.get("/teams/{team_id}", response_model=schemas.TeamResponse)
-def read_team(team_id: int, db: Session = Depends(get_db)):
-    db_team = crud.get_team(db=db, team_id=team_id)
+@app.post("/teams/", response_model=schemas.Team)
+def create_team(team: schemas.TeamCreate, db: Session = Depends(get_db)):
+    return crud.create_team(db=db, team=team)
+
+# 팀 조회
+
+
+@app.get("/teams/{team_uuid}", response_model=schemas.Team)
+def get_team(team_uuid: str, db: Session = Depends(get_db)):
+    db_team = crud.get_team(db=db, team_uuid=team_uuid)
     if db_team is None:
         raise HTTPException(status_code=404, detail="Team not found")
     return db_team
+
+# 경매 생성
+
+
+@app.post("/auctions/", response_model=schemas.Auction)
+def create_auction(auction: schemas.AuctionCreate, db: Session = Depends(get_db)):
+    return crud.create_auction(db=db, auction=auction)
+
+# 경매 조회
+
+
+@app.get("/auctions/{auction_room_name}", response_model=schemas.Auction)
+def get_auction(auction_room_name: str, db: Session = Depends(get_db)):
+    db_auction = crud.get_auction(db=db, auction_room_name=auction_room_name)
+    if db_auction is None:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    return db_auction
 
 # app.add_middleware(
 #   CORSMiddleware,
