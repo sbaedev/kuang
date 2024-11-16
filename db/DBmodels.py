@@ -1,48 +1,83 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, CheckConstraint
+from sqlalchemy import Column, Enum, ForeignKey, Integer, String, Boolean, DateTime
+from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.orm import relationship
-from datetime import datetime
+import enum
 from .DBconn import Base
-
-class User(Base):
-  __tablename__ = "Users"
-
-  user_id = Column(Integer, primary_key=True, index=True)
-  username = Column(String, nullable=False)
-  is_captain = Column(Boolean, nullable=False)
-  base_price = Column(Integer)
-  status = Column(Boolean, default=True)
+from datetime import datetime, timezone
 
 
-class Team(Base):
-  __tablename__ = "Teams"
-
-  team_id = Column(Integer, primary_key=True, index=True)
-  captain_id = Column(Integer, ForeignKey("Users.user_id"), nullable=False)
-  team_name = Column(String, nullable=False)
-  budget = Column(Integer, CheckConstraint("budget >= 0"), nullable=False)
-
-
-class TeamPlayer(Base):
-  __tablename__ = "TeamPlayers"
-
-  team_id = Column(Integer, ForeignKey("Teams.team_id"), primary_key=True)
-  player_id = Column(Integer, ForeignKey("Users.user_id"), primary_key=True)
+class TierEnum(str, enum.Enum):
+    IRON = "IRON"
+    BRONZE = "BRONZE"
+    SILVER = "SILVER"
+    GOLD = "GOLD"
+    PLATINUM = "PLATINUM"
+    EMERALD = "EMERALD"
+    DIAMOND = "DIAMOND"
+    MASTER = "MASTER"
+    GRANDMASTER = "GRANDMASTER"
+    CHALLENGER = "CHALLENGER"
 
 
-class Auction(Base):
-  __tablename__ = "Auctions"
-
-  auction_id = Column(Integer, primary_key=True, index=True)
-  team_id = Column(Integer, ForeignKey("Teams.team_id"), nullable=False)
-  player_id = Column(Integer, ForeignKey("Users.user_id"), nullable=False)
-  bid_amount = Column(Integer, nullable=False)
-  timestamp = Column(DateTime, default=datetime.utcnow)
-  auction_status = Column(String, CheckConstraint("auction_status IN ('OPEN', 'CLOSED', 'IN_PROGRESS')"), default="OPEN")
+class LineEnum(str, enum.Enum):
+    TOP = "TOP"
+    JUG = "JUG"
+    MID = "MID"
+    AD = "AD"
+    SUP = "SUP"
 
 
-class FinalTeamStat(Base):
-  __tablename__ = "FinalTeamStats"
+class AuctionStatusEnum(str, enum.Enum):
+    OPEN = "OPEN"
+    CLOSE = "CLOSE"
+    IN_PROGRESS = "IN_PROGRESS"
+    PENDING = "PENDING"
 
-  team_id = Column(Integer, ForeignKey("Teams.team_id"), primary_key=True)
-  player_id = Column(Integer, ForeignKey("Users.user_id"), primary_key=True)
-  remaining_budget = Column(Integer, CheckConstraint("remaining_budget >= 0"), nullable=False)
+
+class Users(Base):
+    __tablename__ = "users"
+    user_uuid = Column(TEXT, primary_key=True)
+    username = Column(String, unique=True, nullable=False)
+    tier = Column(Enum(TierEnum), nullable=False)
+    primary_line = Column(Enum(LineEnum), nullable=False)
+    secondary_line = Column(Enum(LineEnum), nullable=False)
+    is_captain = Column(Boolean, default=False)
+    base_price = Column(Integer, default=0)
+    profile_image_path = Column(String)
+    current_team_uuid = Column(TEXT, ForeignKey("teams.team_uuid"))
+
+
+class Teams(Base):
+    __tablename__ = "teams"
+    team_uuid = Column(TEXT, primary_key=True)
+    team_name = Column(String, unique=True, nullable=False)
+    captain_uuid = Column(TEXT, ForeignKey("users.user_uuid"), nullable=False)
+    budget = Column(Integer, default=1000)
+
+
+class TeamPlayers(Base):
+    __tablename__ = "team_players"
+    team_player_id = Column(Integer, primary_key=True, autoincrement=True)
+    team_uuid = Column(TEXT, ForeignKey("teams.team_uuid"))
+    player_uuid = Column(TEXT, ForeignKey("users.user_uuid"))
+
+
+class Auctions(Base):
+    __tablename__ = "auctions"
+    auction_room_name = Column(String, primary_key=True)
+    team_uuid = Column(TEXT, ForeignKey("teams.team_uuid"), nullable=False)
+    player_uuid = Column(TEXT, ForeignKey("users.user_uuid"), nullable=False)
+    bid_amount = Column(Integer, nullable=False)
+    start_time = Column(DateTime, default=datetime.now(timezone.utc))
+    end_time = Column(DateTime)
+    auction_status = Column(Enum(AuctionStatusEnum), nullable=False)
+
+
+class AuctionRecords(Base):
+    __tablename__ = "auction_records"
+    record_id = Column(Integer, primary_key=True, autoincrement=True)
+    auction_room_name = Column(
+        String, ForeignKey("auctions.auction_room_name"))
+    bidder_uuid = Column(TEXT, ForeignKey("users.user_uuid"))
+    bid_amount = Column(Integer, nullable=False)
+    timestamp = Column(DateTime, default=datetime.now(timezone.utc))
